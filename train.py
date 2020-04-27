@@ -14,7 +14,7 @@ from tqdm import tqdm
 from tensorboardX import SummaryWriter
 import matplotlib.pyplot as plt
 
-parser = argparse.ArgumentParser(description = "Configuration parameters for training and testing the Schtochastic TravelGAN") 
+parser = argparse.ArgumentParser(description = "Configuration parameters for training and testing the Stochastic TravelGAN") 
 
 parser.add_argument('--train', action = 'store_true') 
 parser.add_argument('--image', type = str) 
@@ -22,12 +22,4 @@ parser.add_argument('--model', type = str, required = True)
 
 args = parser.parse_args()
 print(args) 
-
-
-
-
-
-
-
-
 

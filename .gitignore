@@ -1,2 +1,3 @@
 *.pyc
+siamese_test/data/*
 venv
