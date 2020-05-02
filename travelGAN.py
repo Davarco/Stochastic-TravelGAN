@@ -44,11 +44,4 @@ dataLoaderB = #fill in with dataloader for oranges
 for x in range(0, opt.n_epochs): 
     for (a_real, b_real) in enumerate(zip(dataLoaderA, dataLoaderB)):
         x_ab = self.generatorAtoB(a_real, b_real)
-        x_ba = self.generatorBtoA(a_real, b_real)
-        
-        
-        
-
-                                  
-                                       
-        
+        x_ba = self.generatorBtoA(a_real, b_real) 
