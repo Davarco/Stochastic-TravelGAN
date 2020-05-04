@@ -1,3 +1,4 @@
+import torch 
 from torchvision.datasets import CIFAR10
 from torch.utils.data import Dataset
 from torch.utils.data import Subset
@@ -38,12 +39,12 @@ def get_fruit_data():
         img = cv2.imread('data/oranges/{}.jpg'.format(i), 1) 
         if img is not None and abs(1-img.shape[0]/img.shape[1]) < 0.35: 
             oranges.append(img)
-    X = np.zeros((len(apples), 128, 128, 3))
-    Y = np.zeros((len(oranges), 128, 128, 3))
     for i in range(len(apples)):
-        X[i] = apples[i].resize(128, 128, 3)
+        apples[i] = cv2.resize(apples[i], (128, 128))
     for i in range(len(oranges)):
-        X[i] = oranges[i].resize(128, 128, 3)
+        oranges[i] = cv2.resize(oranges[i], (128, 128))
+    X = np.array(apples)
+    Y = np.array(oranges)
     return X, Y
 
 def main():
