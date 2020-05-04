@@ -13,12 +13,7 @@ from model import *
 from data import *
 
 def train(X, Y, gan):
-    X_size = X.shape[0]
-    Y_size = Y.shape[0]
-
-    epochs = 5
-    batch_size = 8
-    cv2.waitKey(0)
+    pass
 
 def main():
     X, Y = get_fruit_data()
