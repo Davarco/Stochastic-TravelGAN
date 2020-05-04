@@ -17,11 +17,10 @@ class TravelGAN(nn.Module):
         self.DX = Discriminator()
         self.DY = Discriminator()
         
-        S_params = list(self.S.parameters())
-        G_params = list(self.G_XY.parameters()) + list(self.G_YX.parameters())
+        SG_params = list(self.S.parameters()) + list(self.G_XY.parameters()) + \
+                list(self.G_YX.parameters())
         D_params = list(self.DX.parameters()) + list(self.DY.parameters())
-        self.S_opt = optim.Adam(S_params, lr=0.0002, betas=(0.5, 0.9))
-        self.G_opt = optim.Adam(G_params, lr=0.0002, betas=(0.5, 0.9))
+        self.SG_opt = optim.Adam(SG_params, lr=0.0002, betas=(0.5, 0.9))
         self.D_opt = optim.Adam(D_params, lr=0.0002, betas=(0.5, 0.9))
 
 class Siamese(nn.Module):
@@ -155,12 +154,12 @@ def adversarial_loss(logits, genuine):
     return nn.BCELoss()(logits.squeeze(), labels)
 
 def transformation_vector_loss(SX, SY, SX_gen, SY_gen):
-    return F.cosine_similarity(SX-SY, SX_gen-SY_gen) 
+    return torch.mean(F.cosine_similarity(SX-SY, SX_gen-SY_gen))
 
-def constrastive_loss(SX, SY, SX_gen, SY_gen, same):
+def contrastive_loss(SX, SY, SX_gen, SY_gen, same):
     d = F.pairwise_distance(SX-SY, SX_gen-SY_gen)
     loss = (1-same)*torch.pow(d, 2) + same*torch.pow(torch.clamp(2-d, min=0), 2)
-    return loss
+    return torch.mean(loss)
 
 def main():
     gan = TravelGAN()
@@ -184,7 +183,7 @@ def main():
 
     X_vec_loss = transformation_vector_loss(SX, SY, SX_gen, SY_gen)
 
-    X_con_loss = constrastive_loss(SX, SY, SX_gen, SY_gen, 1)
+    X_con_loss = contrastive_loss(SX, SY, SX_gen, SY_gen, 1)
 
     print(X_logits.shape)
     print(Y_logits.shape)
