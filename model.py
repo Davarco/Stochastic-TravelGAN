@@ -7,6 +7,15 @@ from torch.autograd import Variable
 import torch.optim as optim
 import matplotlib.pyplot as plt
 
+class TravelGAN(nn.Module):
+    def __init__(self):
+        super(TravelGAN, self).__init__()
+        self.S = Siamese()
+        self.G_XY = Generator()
+        self.G_YX = Generator()
+        self.DX = Discriminator()
+        self.DY = Discriminator()
+
 class Siamese(nn.Module):
     def __init__(self):
         super(Siamese, self).__init__()
@@ -28,28 +37,6 @@ class Siamese(nn.Module):
 
     def forward(self, X1, X2):
         return self.forward_pass(X1), self.forward_pass(X2)
-
-class Discriminator(nn.Module):
-    def __init__(self):
-        super(Discriminator, self).__init__()
-        self.c1 = conv_block(3, 8, 3, 2, 1, False)
-        self.c2 = conv_block(8, 16, 3, 2, 1, True)
-        self.c3 = conv_block(16, 32, 3, 2, 1, True)
-        self.c4 = conv_block(32, 64, 3, 2, 1, True)
-        self.c5 = conv_block(64, 128, 3, 2, 1, True)
-        self.fc = linear_block(2048, 1, nn.Sigmoid)
-
-    def forward_pass(self, X):
-        X = self.c1(X)
-        X = self.c2(X)
-        X = self.c3(X)
-        X = self.c4(X)
-        X = self.c5(X)
-        X = self.fc(X)
-        return X
-
-    def forward(self, X):
-        return self.forward_pass(X)
 
 class Generator(nn.Module):
     def __init__(self):
@@ -94,6 +81,28 @@ class Generator(nn.Module):
     def forward(self, X):
         return self.forward_pass(X)
 
+class Discriminator(nn.Module):
+    def __init__(self):
+        super(Discriminator, self).__init__()
+        self.c1 = conv_block(3, 8, 3, 2, 1, False)
+        self.c2 = conv_block(8, 16, 3, 2, 1, True)
+        self.c3 = conv_block(16, 32, 3, 2, 1, True)
+        self.c4 = conv_block(32, 64, 3, 2, 1, True)
+        self.c5 = conv_block(64, 128, 3, 2, 1, True)
+        self.fc = linear_block(2048, 1, nn.Sigmoid)
+
+    def forward_pass(self, X):
+        X = self.c1(X)
+        X = self.c2(X)
+        X = self.c3(X)
+        X = self.c4(X)
+        X = self.c5(X)
+        X = self.fc(X)
+        return X
+
+    def forward(self, X):
+        return self.forward_pass(X)
+
 def conv_block(in_ch, out_ch, kernel, stride, padding, batch_norm):
     if batch_norm:
         return nn.Sequential(
@@ -129,21 +138,73 @@ def linear_block(in_ch, out_ch, activation):
             activation()
             )
 
+def adversarial_loss(logits, genuine):
+    batch_size = logits.size(0)
+    if genuine:
+        labels = torch.ones(batch_size)
+    else:
+        labels = torch.zeros(batch_size)
+    return nn.BCELoss()(logits.squeeze(), labels)
+
+def transformation_vector_loss(SX, SY, SX_gen, SY_gen):
+    return F.cosine_similarity(SX-SY, SX_gen-SY_gen) 
+
+def constrastive_loss(SX, SY, SX_gen, SY_gen, same):
+    d = F.pairwise_distance(SX-SY, SX_gen-SY_gen)
+    loss = (1-same)*torch.pow(d, 2) + same*torch.pow(torch.clamp(2-d, min=0), 2)
+    return loss
+
 def main():
-    X = torch.randn(1, 3, 128, 128)
-    generator = Generator()
-    X = generator.forward(X)
-    print('Generator Output Shape:', X.shape)
+    gan = TravelGAN()
+    X = torch.randn(5, 3, 128, 128)
+    Y = torch.randn(5, 3, 128, 128)
+    X_gen = gan.G_YX(Y)
+    Y_gen = gan.G_XY(X)
 
-    X = torch.randn(1, 3, 128, 128)
-    discriminator = Discriminator()
-    X = discriminator.forward(X)
-    print('Discriminator Output Shape:', X.shape)
+    X_logits = gan.DX(X)
+    Y_logits = gan.DY(Y)
+    X_gen_logits = gan.DX(X_gen)
+    Y_gen_logits = gan.DY(Y_gen)
 
-    X = torch.randn(1, 3, 128, 128)
-    siamese = Siamese()
-    X, X = siamese.forward(X, X)
-    print('Siamese Output Shape', X.shape)
+    SX, SY = gan.S(X, Y)
+    SX_gen, SY_gen = gan.S(X_gen, Y_gen)
+
+    X_adv_loss = adversarial_loss(X_logits, True)
+    Y_adv_loss = adversarial_loss(Y_logits, True)
+    X_gen_adv_loss = adversarial_loss(X_gen_logits, False)
+    Y_gen_adv_loss = adversarial_loss(Y_gen_logits, False)
+
+    X_vec_loss = transformation_vector_loss(SX, SY, SX_gen, SY_gen)
+
+    X_con_loss = constrastive_loss(SX, SY, SX_gen, SY_gen, 1)
+
+    print(X_logits.shape)
+    print(Y_logits.shape)
+    print(X_gen_logits.shape)
+    print(Y_gen_logits.shape)
+    print(SX.shape)
+    print(SY.shape)
+    print(SX_gen.shape)
+    print(SY_gen.shape)
+    print(X_adv_loss)
+    print(Y_adv_loss)
+    print(X_gen_adv_loss)
+    print(Y_gen_adv_loss)
+    print(X_vec_loss)
+    print(X_con_loss)
+       
+    # X = torch.randn(5, 3, 128, 128)
+    # siamese = Siamese()
+    # X, X = siamese.forward(X, X)
+    # print('Siamese Output Shape', X.shape)
+    # X = torch.randn(5, 3, 128, 128)
+    # generator = Generator()
+    # X = generator.forward(X)
+    # print('Generator Output Shape:', X.shape)
+    # X = torch.randn(5, 3, 128, 128)
+    # discriminator = Discriminator()
+    # X = discriminator.forward(X)
+    # print('Discriminator Output Shape:', X.shape)
 
 if __name__ == '__main__':
     main()
