@@ -10,11 +10,19 @@ import matplotlib.pyplot as plt
 class TravelGAN(nn.Module):
     def __init__(self):
         super(TravelGAN, self).__init__()
+
         self.S = Siamese()
         self.G_XY = Generator()
         self.G_YX = Generator()
         self.DX = Discriminator()
         self.DY = Discriminator()
+        
+        S_params = list(self.S.parameters())
+        G_params = list(self.G_XY.parameters()) + list(self.G_YX.parameters())
+        D_params = list(self.DX.parameters()) + list(self.DY.parameters())
+        self.S_opt = optim.Adam(S_params, lr=0.0002, betas=(0.5, 0.9))
+        self.G_opt = optim.Adam(G_params, lr=0.0002, betas=(0.5, 0.9))
+        self.D_opt = optim.Adam(D_params, lr=0.0002, betas=(0.5, 0.9))
 
 class Siamese(nn.Module):
     def __init__(self):

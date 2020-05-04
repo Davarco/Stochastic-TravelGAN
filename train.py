@@ -12,8 +12,42 @@ import cv2
 from model import *
 from data import *
 
-def train(X, Y, gan):
-    pass
+def train(X_raw, Y_raw, gan):
+    N = min(X_raw.shape[0], Y_raw.shape[0])
+
+    epochs = 5
+    batch_size = 10
+    for e in range(epochs):
+        np.random.shuffle(X_raw)
+        np.random.shuffle(Y_raw)
+
+        for i in range(N//batch_size):
+            X = torch.Tensor(X_raw[i*batch_size:(i+1)*batch_size])
+            Y = torch.Tensor(Y_raw[i*batch_size:(i+1)*batch_size])
+            X = X.permute(0, 3, 1, 2) 
+            Y = Y.permute(0, 3, 1, 2)
+
+            X_gen = gan.G_YX(Y)
+            Y_gen = gan.G_XY(X)
+
+            # Train the discriminator.
+            X_logits = gan.DX(X)
+            Y_logits = gan.DY(Y)
+            X_gen_logits = gan.DX(X_gen)
+            Y_gen_logits = gan.DY(Y_gen)
+
+            X_dis_loss = adversarial_loss(X_logits, True)
+            Y_dis_loss = adversarial_loss(Y_logits, True)
+            X_gen_dis_loss = adversarial_loss(X_gen_logits, False)
+            Y_gen_dis_loss = adversarial_loss(Y_gen_logits, False)
+            dis_loss = X_dis_loss + X_gen_dis_loss + Y_dis_loss + Y_gen_dis_loss
+            print("Discriminator Loss:", dis_loss)
+
+            gan.D_opt.zero_grad()
+            dis_loss.backward()
+            gan.D_opt.step()
+
+            # Train the generator and siamese network.
 
 def main():
     X, Y = get_fruit_data()
