@@ -40,9 +40,11 @@ def get_fruit_data():
         if img is not None and abs(1-img.shape[0]/img.shape[1]) < 0.35: 
             oranges.append(img)
     for i in range(len(apples)):
-        apples[i] = cv2.resize(apples[i], (128, 128))
+        apples[i] = cv2.resize(apples[i], (128, 128)).astype('float64')
+        apples[i] /= 255
     for i in range(len(oranges)):
-        oranges[i] = cv2.resize(oranges[i], (128, 128))
+        oranges[i] = cv2.resize(oranges[i], (128, 128)).astype('float64')
+        oranges[i] /= 255
     X = np.array(apples)
     Y = np.array(oranges)
     return X, Y
@@ -50,6 +52,9 @@ def get_fruit_data():
 def main():
     X, Y = get_fruit_data()
     print(X.shape, Y.shape)
+    cv2.imshow('X', X[0])
+    cv2.imshow('Y', Y[0])
+    cv2.waitKey(0)
 
 if __name__ == '__main__':
     main()

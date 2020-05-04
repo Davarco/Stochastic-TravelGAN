@@ -4,7 +4,9 @@ import torch.nn.functional as F
 from torch.utils import data
 import torch.nn.functional
 from torch.autograd import Variable
+from torchvision import transforms
 import torch.optim as optim
+from PIL import Image
 import matplotlib.pyplot as plt
 import numpy as np
 import cv2
@@ -82,15 +84,32 @@ def train(X_raw, Y_raw, gan):
             g = gen_loss.item()
             s = siamese_loss.item()
             t = d + g + s
-            print('Loss: (total) {} (discriminator) {} (generator) {} '
-                    '(siamese) {}'.format(t, d, g, s))
+            print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f} (s) {:<8.4f}'
+                    .format(t, d, g, s))
+
+            a = X_gen_dis_loss.item()
+            b = Y_gen_dis_loss.item()
+            t = vec_loss.item()
+            c = con_loss.item()
+            print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
+                    '(Contrastive) {:<8.4f}'.format(a, b, t, c))
+
+            if i % 10 == 0:
+                disp_tensor_as_image(X[0])
+                disp_tensor_as_image(Y[0])
+                disp_tensor_as_image(X_gen[0])
+                disp_tensor_as_image(Y_gen[0])
+
+def disp_tensor_as_image(X):
+    img = transforms.ToPILImage()(X)
+    b, g, r = img.split()
+    img = Image.merge('RGB', (r, g, b))
+    img.show()
 
 def main():
     X, Y = get_fruit_data()
     X = X[:500]
     Y = Y[:500]
-    print('X Shape:', X.shape)
-    print('Y Shape:', Y.shape)
     
     gan = TravelGAN()
     train(X, Y, gan)
