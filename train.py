@@ -75,10 +75,10 @@ def train(X_raw, Y_raw, gan):
 
             X_gen_dis_loss = adversarial_loss(X_gen_logits, True)
             Y_gen_dis_loss = adversarial_loss(Y_gen_logits, True)
-            vec_loss = 10 * transformation_vector_loss(SX, SX_gen)
-            vec_loss += 10 * transformation_vector_loss(SY, SY_gen)
-            con_loss = 10 * contrastive_loss(SX)
-            con_loss += 10 * contrastive_loss(SY)
+            vec_loss = transformation_vector_loss(SX, SX_gen)
+            vec_loss += transformation_vector_loss(SY, SY_gen)
+            con_loss = contrastive_loss(SX)
+            con_loss += contrastive_loss(SY)
 
             gen_loss = X_gen_dis_loss + Y_gen_dis_loss + vec_loss
             siamese_loss = con_loss + vec_loss
@@ -94,16 +94,16 @@ def train(X_raw, Y_raw, gan):
             t = d + g + s
             # print('Loss: (generator) {:<8.4f} (discriminator) '
             #         '{:<8.4f}'.format(combined_loss, dis_loss))
-            print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f} (s) {:<8.4f}'
-                    .format(t, d, g, s))
 
             a = X_gen_dis_loss.item()
             b = Y_gen_dis_loss.item()
             t = vec_loss.item()
             c = con_loss.item()
-            print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
-                    '(Contrastive) {:<8.4f}'.format(a, b, t, c))
 
+        print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f} (s) {:<8.4f}'
+                .format(t, d, g, s))
+        print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
+                '(Contrastive) {:<8.4f}'.format(a, b, t, c))
         # if i in check:
         print(e)
         if e % 100 == 0 or e == 499:
