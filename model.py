@@ -6,16 +6,23 @@ import torch.nn.functional
 from torch.autograd import Variable
 import torch.optim as optim
 import matplotlib.pyplot as plt
+import numpy as np
+from itertools import combinations
 
 class TravelGAN(nn.Module):
     def __init__(self):
         super(TravelGAN, self).__init__()
 
         self.S = Siamese()
+        self.S = self.S.cuda()
         self.G_XY = Generator()
+        self.G_XY = self.G_XY.cuda()
         self.G_YX = Generator()
+        self.G_YX = self.G_YX.cuda()
         self.DX = Discriminator()
+        self.DX = self.DX.cuda()
         self.DY = Discriminator()
+        self.DY = self.DY.cuda()
         
         SG_params = list(self.S.parameters()) + list(self.G_XY.parameters()) + \
                 list(self.G_YX.parameters())
@@ -148,18 +155,23 @@ def linear_block(in_ch, out_ch, activation):
 def adversarial_loss(logits, genuine):
     batch_size = logits.size(0)
     if genuine:
-        labels = torch.ones(batch_size)
+        labels = torch.ones(batch_size).cuda()
     else:
-        labels = torch.zeros(batch_size)
-    return nn.BCELoss()(logits.squeeze(), labels)
+        labels = torch.zeros(batch_size).cuda()
+    return F.binary_cross_entropy(logits.squeeze(), labels)
 
-def transformation_vector_loss(SX, SY, SX_gen, SY_gen):
-    return torch.mean(F.cosine_similarity(SX-SY, SX_gen-SY_gen))
+def transformation_vector_loss(X, SX):
+    pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
+    V0 = X[pairs[:, 0]] - X[pairs[:, 1]]
+    V1 = SX[pairs[:, 0]] - SX[pairs[:, 1]]
+    angle_dist = torch.mean(F.cosine_similarity(V0, V1))
+    mag_dist = torch.mean(F.mse_loss(V0, V1))
+    return mag_dist - angle_dist
 
-def contrastive_loss(SX, SY, SX_gen, SY_gen, same):
-    d = F.pairwise_distance(SX-SY, SX_gen-SY_gen)
-    loss = (1-same)*torch.pow(d, 2) + same*torch.pow(torch.clamp(2-d, min=0), 2)
-    return torch.mean(loss)
+def contrastive_loss(SX):
+    pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
+    V = SX[pairs[:, 0]] - SX[pairs[:, 1]]
+    return torch.mean(F.relu(10-torch.norm(V, dim=1)))
 
 def main():
     gan = TravelGAN()
