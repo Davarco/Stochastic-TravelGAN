@@ -171,7 +171,9 @@ def transformation_vector_loss(X, SX):
 def contrastive_loss(SX):
     pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
     V = SX[pairs[:, 0]] - SX[pairs[:, 1]]
-    return torch.mean(F.relu(10-torch.norm(V, dim=1)))
+    same = 0
+    loss = (1-same)*torch.pow(V, 2) + same*torch.pow(torch.clamp(10-V, min=0), 2)
+    return torch.mean(loss)
 
 def main():
     gan = TravelGAN()

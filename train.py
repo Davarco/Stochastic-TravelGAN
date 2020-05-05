@@ -105,6 +105,7 @@ def train(X_raw, Y_raw, gan):
                     '(Contrastive) {:<8.4f}'.format(a, b, t, c))
 
         # if i in check:
+        print(e)
         if e % 100 == 0 or e == 499:
             disp_tensor_as_image(X[0])
             disp_tensor_as_image(Y[0])
