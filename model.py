@@ -60,7 +60,6 @@ class Generator(nn.Module):
         self.t4 = uconv_block_final(128, 3, 4, 2, 1, 0)
 
     def forward_pass(self, X):
-        print(X.shape)
         X_init = X
         X_c1 = self.c1(X)
         X_c2 = self.c2(X_c1)
@@ -161,19 +160,19 @@ def adversarial_loss(logits, genuine):
 
 def transformation_vector_loss(SX, SX_gen):
     pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
-    # V0 = F.normalize(SX[pairs[:, 0]] - SX[pairs[:, 1]], dim=1)
-    # V1 = F.normalize(SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]], dim=1)
-    # return torch.mean(torch.sum(-V0*V1, dim=1))
-    V0 = SX[pairs[:, 0]] - SX[pairs[:, 1]]
-    V1 = SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]]
-    angle_dist = nn.CosineSimilarity()(V0, V1).mean()
-    mag_dist = nn.MSELoss(reduction='mean')(V0, V1)
-    return mag_dist - angle_dist
+    V0 = F.normalize(SX[pairs[:, 0]] - SX[pairs[:, 1]], dim=1)
+    V1 = F.normalize(SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]], dim=1)
+    return torch.mean(torch.sum(-V0*V1, dim=1))
+    # V0 = SX[pairs[:, 0]] - SX[pairs[:, 1]]
+    # V1 = SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]]
+    # angle_dist = nn.CosineSimilarity()(V0, V1).mean()
+    # mag_dist = nn.MSELoss(reduction='mean')(V0, V1)
+    # return mag_dist - angle_dist
 
 def contrastive_loss_same(SX, SX_gen):
     V = SX - SX_gen
-    # V = V**2
-    return torch.mean(V)
+    V = V**2
+    return torch.mean(V, dim=1)
 
 def contrastive_loss_different(SX):
     pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
@@ -181,7 +180,8 @@ def contrastive_loss_different(SX):
     # V = V**2
     # same = 0
     # loss = (1-same)*torch.pow(V, 2) + same*torch.pow(torch.clamp(10-V, min=0), 2)
-    loss = torch.clamp(10 - torch.norm(V, 1), min=0)
+    # loss = torch.clamp(10 - torch.norm(V, 1), min=0)
+    loss = torch.mean(torch.clamp(10 - torch.sum(V**2, dim=1), min=0), dim=-1)
     return loss
     # return torch.mean(loss)
 

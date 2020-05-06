@@ -19,6 +19,7 @@ def train(X_dataloader, Y_dataloader, gan):
     torch.autograd.set_detect_anomaly(True)
 
     epochs = 500
+    steps = 0
     for e in range(epochs):
         for X, Y in zip(X_dataloader, Y_dataloader):
             # Train the discriminator.
@@ -77,16 +78,18 @@ def train(X_dataloader, Y_dataloader, gan):
             g3 = 10 * vec_loss.item()
             g4 = 10 * con_loss.item()
 
-        print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f}'.format(t, d, g))
-        print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
-                '(Contrastive) {:<8.4f}'.format(g1, g2, g3, g4))
-        # if i in check:
-        print(e)
-        if e % 20 == 0 or e == 499:
-            disp_tensor_as_image(X[0])
-            disp_tensor_as_image(Y[0])
-            disp_tensor_as_image(X_gen[0])
-            disp_tensor_as_image(Y_gen[0])
+            steps += 1
+
+            print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f}'.format(t, d, g))
+            print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
+                    '(Contrastive) {:<8.4f}'.format(g1, g2, g3, g4))
+
+            # if i in check:
+            if steps % 50 == 1 or e == 499:
+                disp_tensor_as_image(X[0])
+                disp_tensor_as_image(Y[0])
+                disp_tensor_as_image(X_gen[0])
+                disp_tensor_as_image(Y_gen[0])
         # i += 1
 
 def disp_tensor_as_image(X):
