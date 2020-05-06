@@ -31,10 +31,10 @@ def train(X_dataloader, Y_dataloader, gan):
             X_gen_logits = gan.DX(X_gen)
             Y_gen_logits = gan.DY(Y_gen)
 
-            X_dis_loss = adversarial_loss(X_logits, True)
-            Y_dis_loss = adversarial_loss(Y_logits, True)
-            X_gen_dis_loss = adversarial_loss(X_gen_logits, False)
-            Y_gen_dis_loss = adversarial_loss(Y_gen_logits, False)
+            X_dis_loss = 0.5 * adversarial_loss(X_logits, True)
+            Y_dis_loss = 0.5 * adversarial_loss(Y_logits, True)
+            X_gen_dis_loss = 0.5 * adversarial_loss(X_gen_logits, False)
+            Y_gen_dis_loss = 0.5 * adversarial_loss(Y_gen_logits, False)
             dis_loss = X_dis_loss + X_gen_dis_loss + Y_dis_loss + Y_gen_dis_loss
 
             dis_loss.backward()

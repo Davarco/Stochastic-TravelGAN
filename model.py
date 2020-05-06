@@ -28,17 +28,19 @@ class TravelGAN(nn.Module):
 class Siamese(nn.Module):
     def __init__(self):
         super(Siamese, self).__init__()
-        self.c1 = conv_block(3, 64, 3, 2, 1, False)
-        self.c2 = conv_block(64, 128, 3, 2, 1, True)
-        self.c3 = conv_block(128, 256, 3, 2, 1, True)
-        self.c4 = conv_block(256, 512, 3, 2, 1, True)
-        self.fc = linear_block(32768, 1000)
+        self.c1 = conv_block(3, 64, 4, 2, 1, False)
+        self.c2 = conv_block(64, 128, 4, 2, 1, True)
+        self.c3 = conv_block(128, 256, 4, 2, 1, True)
+        self.c4 = conv_block(256, 512, 4, 2, 1, True)
+        self.c5 = conv_block(512, 512, 4, 2, 1, True)
+        self.fc = linear_block(8192, 1000)
 
     def forward_pass(self, X):
         X = self.c1(X)
         X = self.c2(X)
         X = self.c3(X)
         X = self.c4(X)
+        X = self.c5(X)
         X = self.fc(X)
         return X
 
@@ -51,27 +53,27 @@ class Generator(nn.Module):
         self.c1 = conv_block(3, 64, 4, 2, 1, False)
         self.c2 = conv_block(64, 128, 4, 2, 1, True)
         self.c3 = conv_block(128, 256, 4, 2, 1, True)
-        self.c4 = conv_block(256, 512, 4, 2, 1, True)
-        self.c5 = conv_block_final(512, 512, 4, 2, 1, False)
-        self.t1 = uconv_block(512, 512, 4, 2, 1, 0)
-        self.t2 = uconv_block(1024, 256, 4, 2, 1, 0)
-        self.t3 = uconv_block(512, 128, 4, 2, 1, 0)
-        self.t4 = uconv_block(256, 64, 4, 2, 1, 0)
-        self.t5 = uconv_block_final(128, 3, 4, 2, 1, 0)
+        self.c4 = conv_block(256, 256, 4, 2, 1, True)
+        self.t1 = uconv_block(256, 256, 4, 2, 1, 0)
+        self.t2 = uconv_block(512, 128, 4, 2, 1, 0)
+        self.t3 = uconv_block(256, 64, 4, 2, 1, 0)
+        self.t4 = uconv_block_final(128, 3, 4, 2, 1, 0)
 
     def forward_pass(self, X):
+        print(X.shape)
         X_init = X
         X_c1 = self.c1(X)
         X_c2 = self.c2(X_c1)
         X_c3 = self.c3(X_c2)
         X_c4 = self.c4(X_c3)
-        X_c5 = self.c5(X_c4)
 
-        X = nn.ReLU()(torch.cat((self.t1(X_c5), X_c4), 1))
-        X = nn.ReLU()(torch.cat((self.t2(X), X_c3), 1))
-        X = nn.ReLU()(torch.cat((self.t3(X), X_c2), 1))
-        X = nn.ReLU()(torch.cat((self.t4(X), X_c1), 1))
-        X = self.t5(X)
+        X = self.t1(X_c4)
+        X = torch.cat((X_c3, X), 1)
+        X = self.t2(X)
+        X = torch.cat((X_c2, X), 1)
+        X = self.t3(X)
+        X = torch.cat((X_c1, X), 1)
+        X = self.t4(X)
 
         return X
 
@@ -81,17 +83,19 @@ class Generator(nn.Module):
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
-        self.c1 = conv_block(3, 64, 3, 2, 1, False)
-        self.c2 = conv_block(64, 128, 3, 2, 1, True)
-        self.c3 = conv_block(128, 256, 3, 2, 1, True)
-        self.c4 = conv_block(256, 512, 3, 2, 1, True)
-        self.fc = linear_block(32768, 1)
+        self.c1 = conv_block(3, 128, 4, 2, 1, False)
+        self.c2 = conv_block(128, 256, 4, 2, 1, True)
+        self.c3 = conv_block(256, 512, 4, 2, 1, True)
+        self.c4 = conv_block(512, 1024, 4, 2, 1, True)
+        self.c5 = conv_block(1024, 1024, 4, 2, 1, True)
+        self.fc = linear_block(16384, 1)
 
     def forward_pass(self, X):
         X = self.c1(X)
         X = self.c2(X)
         X = self.c3(X)
         X = self.c4(X)
+        X = self.c5(X)
         X = self.fc(X)
         return X
 
@@ -116,12 +120,12 @@ def conv_block_final(in_ch, out_ch, kernel, stride, padding, batch_norm):
         return nn.Sequential(
                 nn.Conv2d(in_ch, out_ch, kernel, stride, padding),
                 nn.BatchNorm2d(out_ch),
-                nn.ReLU(True)
+                nn.LeakyReLU(0.2, True)
                 )
     else:
         return nn.Sequential(
                 nn.Conv2d(in_ch, out_ch, kernel, stride, padding),
-                nn.ReLU(True)
+                nn.LeakyReLU(0.2, True)
                 )
 
 def uconv_block(in_ch, out_ch, kernel, stride, padding, output_padding):
@@ -130,7 +134,7 @@ def uconv_block(in_ch, out_ch, kernel, stride, padding, output_padding):
                 output_padding),
             nn.BatchNorm2d(out_ch),
             # nn.LeakyReLU(0.2, True)
-            # nn.ReLU(True)
+            nn.ReLU(True)
             )
 
 def uconv_block_final(in_ch, out_ch, kernel, stride, padding, output_padding):
