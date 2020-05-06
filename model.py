@@ -14,10 +14,15 @@ class TravelGAN(nn.Module):
         super(TravelGAN, self).__init__()
 
         self.S = Siamese().cuda()
+        self.S.apply(weights_init)
         self.G_XY = Generator().cuda()
+        self.G_XY.apply(weights_init)
         self.G_YX = Generator().cuda()
+        self.G_YX.apply(weights_init)
         self.DX = Discriminator().cuda()
+        self.DX.apply(weights_init)
         self.DY = Discriminator().cuda()
+        self.DY.apply(weights_init)
         
         SG_params = list(self.S.parameters()) + list(self.G_XY.parameters()) + \
                 list(self.G_YX.parameters())
@@ -101,6 +106,11 @@ class Discriminator(nn.Module):
     def forward(self, X):
         return self.forward_pass(X)
 
+def weights_init(m):
+    if isinstance(m, nn.Conv2d):
+        nn.init.normal_(m.weight.data, 0, 0.02)
+        nn.init.normal_(m.bias.data, 0, 0.02)
+
 def conv_block(in_ch, out_ch, kernel, stride, padding, batch_norm):
     if batch_norm:
         return nn.Sequential(
@@ -156,35 +166,59 @@ def adversarial_loss(logits, genuine):
         labels = torch.ones(batch_size).cuda()
     else:
         labels = torch.zeros(batch_size).cuda()
-    loss = nn.BCEWithLogitsLoss()(logits.squeeze(), labels)
+    loss = nn.BCEWithLogitsLoss()(logits, labels.unsqueeze_(1))
     return loss
 
 def transformation_vector_loss(SX, SX_gen):
-    pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
-    V0 = F.normalize(SX[pairs[:, 0]] - SX[pairs[:, 1]], dim=1)
-    V1 = F.normalize(SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]], dim=1)
-    return torch.mean(torch.sum(-V0*V1, dim=1))
+    # pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
+    # V0 = F.normalize(SX[pairs[:, 0]] - SX[pairs[:, 1]], dim=1)
+    # V1 = F.normalize(SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]], dim=1)
+    # return torch.mean(torch.sum(-V0*V1, dim=1))
     # V0 = SX[pairs[:, 0]] - SX[pairs[:, 1]]
     # V1 = SX_gen[pairs[:, 0]] - SX_gen[pairs[:, 1]]
     # angle_dist = nn.CosineSimilarity()(V0, V1).mean()
     # mag_dist = nn.MSELoss(reduction='mean')(V0, V1)
     # return mag_dist - angle_dist
+    arr = []
+    for i in range(SX.shape[0] - 1):
+        other = np.roll(np.arange(SX.shape[0]), -(i+1))
+        V0 = F.normalize(SX - SX[other], dim=-1)
+        V1 = F.normalize(SX_gen - SX_gen[other], dim=-1)
+        arr.append(torch.sum(-V0 * V1, dim=-1))
+    arr = torch.stack(arr, dim=0)
+    return torch.mean(arr)
 
 def contrastive_loss_same(SX, SX_gen):
-    V = SX - SX_gen
-    V = V**2
-    return torch.mean(V)
+    arr = []
+    for i in range(SX.shape[0] - 1):
+        other = np.roll(np.arange(SX.shape[0]), -(i+1))
+        V0 = SX - SX[other]
+        V1 = SX_gen - SX_gen[other]
+        V = (V0 - V1)**2
+        arr.append(torch.mean(V))
+    arr = torch.stack(arr, dim=0)
+    return torch.mean(arr)
+    # V = SX - SX_gen
+    # V = V**2
+    # return torch.mean(V)
 
 def contrastive_loss_different(SX):
-    pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
-    V = SX[pairs[:, 0]] - SX[pairs[:, 1]]
+    # pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
+    # V = SX[pairs[:, 0]] - SX[pairs[:, 1]]
     # V = V**2
     # same = 0
     # loss = (1-same)*torch.pow(V, 2) + same*torch.pow(torch.clamp(10-V, min=0), 2)
     # loss = torch.clamp(10 - torch.norm(V, 1), min=0)
-    loss = torch.mean(torch.clamp(10 - torch.sum(V**2, dim=1), min=0), dim=1)
-    return loss
+    # loss = torch.mean(torch.clamp(10 - torch.sum(V**2, dim=1), min=0), dim=-1)
     # return torch.mean(loss)
+    arr = []
+    for i in range(SX.shape[0] - 1):
+        other = np.roll(np.arange(SX.shape[0]), -(i+1))
+        V = SX - SX[other]
+        L = torch.mean(torch.clamp(10 - torch.sum(V**2, dim=1), min=0), dim=-1)
+        arr.append(L)
+    arr = torch.stack(arr, dim=0)
+    return torch.mean(arr)
 
 def main():
     # gan = TravelGAN()

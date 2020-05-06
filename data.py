@@ -39,8 +39,11 @@ class MaleHatClass(Dataset):
         self.files = []
         for i in range(size):
             img = Image.open('{}/{}'.format(folder, hat[i, 0]))
-            img = transforms.functional.resize(img, (128, 128))
+            img = transforms.functional.resize(img, (160, 160))
+            img = transforms.RandomResizedCrop(128, (0.8, 0.8), (1, 1))(img)
+            img = transforms.RandomHorizontalFlip(0.5)(img)
             img = transforms.ToTensor()(img).cuda()
+            img = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
             self.files.append(img)
 
     def __getitem__(self, index): 
@@ -57,12 +60,15 @@ class MaleNoHatClass(Dataset):
         self.files = []
         for i in range(size):
             img = Image.open('{}/{}'.format(folder, nohat[i, 0]))
-            img = transforms.functional.resize(img, (128, 128))
+            img = transforms.functional.resize(img, (160, 160))
+            img = transforms.RandomResizedCrop(128, (0.8, 0.8), (1, 1))(img)
+            img = transforms.RandomHorizontalFlip(0.5)(img)
             img = transforms.ToTensor()(img).cuda()
+            img = transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))(img)
             self.files.append(img)
 
     def __getitem__(self, index): 
-        return self.files[index]
+            return self.files[index]
     
     def __len__(self): 
         return len(self.files) 

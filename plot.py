@@ -33,4 +33,8 @@ plt.figure(6)
 plt.plot(X, data[:, 6])
 plt.title('travel loss')
 
+plt.figure(7)
+plt.plot(X, np.sum(data, axis=1))
+plt.title('total loss')
+
 plt.show()

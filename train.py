@@ -23,7 +23,6 @@ def train(X_dataloader, Y_dataloader, gan):
     for e in range(epochs):
         for X, Y in zip(X_dataloader, Y_dataloader):
             # Train the discriminator.
-            print(X.shape)
             gan.D_opt.zero_grad()
             X_gen = gan.G_YX(Y)
             Y_gen = gan.G_XY(X)
@@ -57,9 +56,12 @@ def train(X_dataloader, Y_dataloader, gan):
 
             X_gen_dis_loss = adversarial_loss(X_gen_logits, True)
             Y_gen_dis_loss = adversarial_loss(Y_gen_logits, True)
-            vec_loss = torch.mean(torch.stack((transformation_vector_loss(SX, SX_gen), transformation_vector_loss(SY, SY_gen))))
-            siamese_diff = torch.mean(torch.stack((contrastive_loss_different(SX), contrastive_loss_different(SY))))
-            siamese_same = torch.mean(torch.stack((contrastive_loss_same(SX, SX_gen), contrastive_loss_same(SY, SY_gen))))
+            vec_loss = 0.5 * transformation_vector_loss(SX, SX_gen)
+            vec_loss += 0.5 * transformation_vector_loss(SY, SY_gen)
+            siamese_diff = 0.5 * contrastive_loss_different(SX)
+            siamese_diff += 0.5 * contrastive_loss_different(SY)
+            siamese_same = 0.5 * contrastive_loss_same(SX, SX_gen)
+            siamese_same += 0.5 * contrastive_loss_same(SY, SY_gen)
 
             gen_loss = X_gen_dis_loss + Y_gen_dis_loss
             gen_loss += 10 * (vec_loss + siamese_diff + siamese_same)
@@ -87,7 +89,7 @@ def train(X_dataloader, Y_dataloader, gan):
                     .format(g1, g2, v, s1, s2))
 
             # if i in check:
-            if steps == 1 or steps % 50 == 0:
+            if steps:
                 out = open('losses.txt', 'a')
                 out.write('{} {} {} {} {} {} {}\n'.format(d1, d2, g1, g2, s1, s2, v))
                 out.close()
@@ -100,7 +102,8 @@ def train(X_dataloader, Y_dataloader, gan):
         # i += 1
 
 def disp_tensor_as_image(X, step, name):
-    img = transforms.ToPILImage()(X.cpu())
+    img = transforms.Normalize((-1, -1, -1), (2, 2, 2))(X.cpu())
+    img = transforms.ToPILImage()(img)
     img.save('output/{}_{}'.format(step, name))
     img.show()
 
@@ -113,8 +116,8 @@ def main():
     # X = X[:500]
     # Y = Y[:500]
 
-    hat = DataLoader(MaleHatClass(1000), batch_size=10, shuffle=True)
-    nohat = DataLoader(MaleNoHatClass(1000), batch_size=10, shuffle=True)
+    hat = DataLoader(MaleHatClass(1000), batch_size=16, shuffle=True)
+    nohat = DataLoader(MaleNoHatClass(1000), batch_size=16, shuffle=True)
     
     gan = TravelGAN()
     # print(gan.G_XY)
