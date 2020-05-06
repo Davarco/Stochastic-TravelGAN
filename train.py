@@ -15,29 +15,14 @@ import cv2
 from model import *
 from data import *
 
-def train(X_raw, Y_raw, gan):
+def train(X_dataloader, Y_dataloader, gan):
     torch.autograd.set_detect_anomaly(True)
 
-    N = min(X_raw.shape[0], Y_raw.shape[0])
     epochs = 500
-    batch_size = 10
     for e in range(epochs):
-        np.random.shuffle(X_raw)
-        np.random.shuffle(Y_raw)
-
-        for i in range(N//batch_size):
-        # i = 0
-        # for X, Y in zip(X_raw, Y_raw):
+        for X, Y in zip(X_dataloader, Y_dataloader):
             # Train the discriminator.
             gan.D_opt.zero_grad()
-
-            X = torch.Tensor(X_raw[i*batch_size:(i+1)*batch_size])
-            Y = torch.Tensor(Y_raw[i*batch_size:(i+1)*batch_size])
-            X = X.cuda()
-            Y = Y.cuda()
-            X = X.permute(0, 3, 1, 2) 
-            Y = Y.permute(0, 3, 1, 2)
-
             X_gen = gan.G_YX(Y)
             Y_gen = gan.G_XY(X)
 
@@ -58,13 +43,6 @@ def train(X_raw, Y_raw, gan):
             # Train the generator and siamese network.
             gan.SG_opt.zero_grad()
 
-            X = torch.Tensor(X_raw[i*batch_size:(i+1)*batch_size])
-            Y = torch.Tensor(Y_raw[i*batch_size:(i+1)*batch_size])
-            X = X.cuda()
-            Y = Y.cuda()
-            X = X.permute(0, 3, 1, 2) 
-            Y = Y.permute(0, 3, 1, 2)
-
             X_gen = gan.G_YX(Y)
             Y_gen = gan.G_XY(X)
             X_gen_logits = gan.DX(X_gen)
@@ -77,36 +55,34 @@ def train(X_raw, Y_raw, gan):
             Y_gen_dis_loss = adversarial_loss(Y_gen_logits, True)
             vec_loss = transformation_vector_loss(SX, SX_gen)
             vec_loss += transformation_vector_loss(SY, SY_gen)
-            con_loss = contrastive_loss(SX)
-            con_loss += contrastive_loss(SY)
+            con_loss = contrastive_loss_different(SX)
+            con_loss += contrastive_loss_different(SY)
+            # con_loss += contrastive_loss_same(SX, SX_gen)
+            # con_loss += contrastive_loss_same(SY, SY_gen)
 
-            gen_loss = X_gen_dis_loss + Y_gen_dis_loss + vec_loss
-            siamese_loss = con_loss + vec_loss
-            
-            combined_loss = gen_loss + siamese_loss
-            combined_loss.backward()
+            gen_loss = X_gen_dis_loss + Y_gen_dis_loss
+            gen_loss += 10 * (vec_loss + con_loss)
+            gen_loss.backward()
 
             gan.SG_opt.step()
 
             d = dis_loss.item()
             g = gen_loss.item()
-            s = siamese_loss.item()
-            t = d + g + s
+            t = d + g
             # print('Loss: (generator) {:<8.4f} (discriminator) '
             #         '{:<8.4f}'.format(combined_loss, dis_loss))
 
-            a = X_gen_dis_loss.item()
-            b = Y_gen_dis_loss.item()
-            t = vec_loss.item()
-            c = con_loss.item()
+            g1 = X_gen_dis_loss.item()
+            g2 = Y_gen_dis_loss.item()
+            g3 = 10 * vec_loss.item()
+            g4 = 10 * con_loss.item()
 
-        print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f} (s) {:<8.4f}'
-                .format(t, d, g, s))
+        print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f}'.format(t, d, g))
         print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
-                '(Contrastive) {:<8.4f}'.format(a, b, t, c))
+                '(Contrastive) {:<8.4f}'.format(g1, g2, g3, g4))
         # if i in check:
         print(e)
-        if e % 100 == 0 or e == 499:
+        if e % 20 == 0 or e == 499:
             disp_tensor_as_image(X[0])
             disp_tensor_as_image(Y[0])
             disp_tensor_as_image(X_gen[0])
@@ -128,9 +104,11 @@ def main():
     # X = X[:500]
     # Y = Y[:500]
 
-    hat, nohat = get_celeb_data()
+    hat = DataLoader(MaleHatClass(1000), batch_size=10, shuffle=True)
+    nohat = DataLoader(MaleNoHatClass(1000), batch_size=10, shuffle=True)
     
     gan = TravelGAN()
+    # print(gan.G_XY)
     train(hat, nohat, gan)
 
 if __name__ == '__main__':
