@@ -4,3 +4,4 @@ siamese_test/data/*
 *.swp
 siamese_test/*.swp
 venv
+output/*

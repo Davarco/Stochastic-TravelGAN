@@ -88,20 +88,22 @@ def train(X_dataloader, Y_dataloader, gan):
                     '(Siamese Diff) {:<8.4f} (Siamese Same) {:<8.4f}'
                     .format(g1, g2, v, s1, s2))
 
-            out = open('losses.txt', 'a')
-            out.write('{} {} {} {} {} {} {}\n'.format(d1, d2, g1, g2, s1, s2, v))
-            out.close()
-
             # if i in check:
-            if steps % 50 == 1 or e == 499:
-                disp_tensor_as_image(X[0])
-                disp_tensor_as_image(Y[0])
-                disp_tensor_as_image(X_gen[0])
-                disp_tensor_as_image(Y_gen[0])
+            if steps == 1 or steps % 50 == 0:
+                out = open('losses.txt', 'a')
+                out.write('{} {} {} {} {} {} {}\n'.format(d1, d2, g1, g2, s1, s2, v))
+                out.close()
+
+            if steps == 1 or steps % 100 == 0:
+                disp_tensor_as_image(X[0], steps, 'X.jpg')
+                disp_tensor_as_image(Y[0], steps, 'Y.jpg')
+                disp_tensor_as_image(X_gen[0], steps, 'X_gen.jpg')
+                disp_tensor_as_image(Y_gen[0], steps, 'Y_gen.jpg')
         # i += 1
 
-def disp_tensor_as_image(X):
+def disp_tensor_as_image(X, step, name):
     img = transforms.ToPILImage()(X.cpu())
+    img.save('output/{}_{}.jpg'.format(step, name))
     img.show()
 
 def main():
