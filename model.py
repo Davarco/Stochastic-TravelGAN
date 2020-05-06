@@ -156,7 +156,8 @@ def adversarial_loss(logits, genuine):
         labels = torch.ones(batch_size).cuda()
     else:
         labels = torch.zeros(batch_size).cuda()
-    return nn.BCEWithLogitsLoss()(logits.squeeze(), labels)
+    loss = nn.BCEWithLogitsLoss()(logits.squeeze(), labels)
+    return loss
 
 def transformation_vector_loss(SX, SX_gen):
     pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
@@ -181,7 +182,7 @@ def contrastive_loss_different(SX):
     # same = 0
     # loss = (1-same)*torch.pow(V, 2) + same*torch.pow(torch.clamp(10-V, min=0), 2)
     # loss = torch.clamp(10 - torch.norm(V, 1), min=0)
-    loss = torch.mean(torch.clamp(10 - torch.sum(V**2, dim=1), min=0), dim=-1)
+    loss = torch.mean(torch.clamp(10 - torch.sum(V**2, dim=1), min=0), dim=1)
     return loss
     # return torch.mean(loss)
 
