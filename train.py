@@ -37,6 +37,8 @@ def train(X_dataloader, Y_dataloader, gan):
             X_gen_dis_loss = 0.5 * adversarial_loss(X_gen_logits, False)
             Y_gen_dis_loss = 0.5 * adversarial_loss(Y_gen_logits, False)
             dis_loss = X_dis_loss + X_gen_dis_loss + Y_dis_loss + Y_gen_dis_loss
+            d1 = X_dis_loss.item() + Y_dis_loss.item()
+            d2 = X_gen_dis_loss.item() + Y_gen_dis_loss.item()
 
             dis_loss.backward()
             gan.D_opt.step()
@@ -56,13 +58,13 @@ def train(X_dataloader, Y_dataloader, gan):
             Y_gen_dis_loss = adversarial_loss(Y_gen_logits, True)
             vec_loss = transformation_vector_loss(SX, SX_gen)
             vec_loss += transformation_vector_loss(SY, SY_gen)
-            con_loss = contrastive_loss_different(SX)
-            con_loss += contrastive_loss_different(SY)
-            # con_loss += contrastive_loss_same(SX, SX_gen)
-            # con_loss += contrastive_loss_same(SY, SY_gen)
+            siamese_diff = contrastive_loss_different(SX)
+            siamese_diff += contrastive_loss_different(SY)
+            siamese_same = contrastive_loss_same(SX, SX_gen)
+            siamese_same += contrastive_loss_same(SY, SY_gen)
 
             gen_loss = X_gen_dis_loss + Y_gen_dis_loss
-            gen_loss += 10 * (vec_loss + con_loss)
+            gen_loss += 10 * (vec_loss + siamese_diff + siamese_same)
             gen_loss.backward()
 
             gan.SG_opt.step()
@@ -75,14 +77,20 @@ def train(X_dataloader, Y_dataloader, gan):
 
             g1 = X_gen_dis_loss.item()
             g2 = Y_gen_dis_loss.item()
-            g3 = 10 * vec_loss.item()
-            g4 = 10 * con_loss.item()
+            v = 10 * vec_loss.item()
+            s1 = 10 * siamese_diff.item()
+            s2 = 10 * siamese_same.item()
 
             steps += 1
 
             print('Loss: (t) {:<8.4f} (d) {:<8.4f} (g) {:<8.4f}'.format(t, d, g))
             print('\tGen: (X_gen) {:<8.4f} (Y_gen) {:<8.4f} (TraVeL) {:<8.4f} '
-                    '(Contrastive) {:<8.4f}'.format(g1, g2, g3, g4))
+                    '(Siamese Diff) {:<8.4f} (Siamese Same) {:<8.4f}'
+                    .format(g1, g2, v, s1, s2))
+
+            out = open('losses.txt', 'a')
+            out.write('{} {} {} {} {} {} {}\n'.format(d1, d2, g1, g2, s1, s2, v))
+            out.close()
 
             # if i in check:
             if steps % 50 == 1 or e == 499:
@@ -94,8 +102,6 @@ def train(X_dataloader, Y_dataloader, gan):
 
 def disp_tensor_as_image(X):
     img = transforms.ToPILImage()(X.cpu())
-    b, g, r = img.split()
-    img = Image.merge('RGB', (r, g, b))
     img.show()
 
 def main():

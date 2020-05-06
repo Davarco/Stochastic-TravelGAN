@@ -172,7 +172,7 @@ def transformation_vector_loss(SX, SX_gen):
 def contrastive_loss_same(SX, SX_gen):
     V = SX - SX_gen
     V = V**2
-    return torch.mean(V, dim=1)
+    return torch.mean(V)
 
 def contrastive_loss_different(SX):
     pairs = np.asarray(list(combinations(range(SX.shape[0]), 2)))
